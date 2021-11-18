@@ -1,4 +1,6 @@
-#![feature(in_band_lifetimes, trait_alias, type_alias_impl_trait, clone_closures)]
+#![feature(in_band_lifetimes, trait_alias, type_alias_impl_trait)]
+use std::slice::ArrayWindows;
+
 use rayon::prelude::*;
 
 #[derive(Clone)]
@@ -113,6 +115,10 @@ fn r_comb<'a>(a : Out<'a>, b : Out<'a>) -> Out<'a>
         })
     })
 }
+
+// TODO: Implement lt_comb and rt_comb
+// l_comb and r_comb select one branch and discard the other.
+// lt_comb and rt_comb select a branch and place the other as the child
 
 impl OutDat<'a>
 {
@@ -325,6 +331,123 @@ fn or_chain<'a>(ps : Vec<impl Parser<'a>>) -> impl Parser<'a>
 
         return Err(FailDat {});
     }
+}
+
+fn one_or_none<'a>(p : impl Parser<'a>) -> impl Parser<'a> { or(p, always("")) }
+
+fn one_or_many<'a>(p : impl Parser<'a>, comb : impl Combiner<'a>) -> impl Parser<'a>
+{
+    move |ind : &InDat<'a>| -> Out<'a> {
+        or(
+            then(p.clone(), one_or_many(p.clone(), comb.clone()), comb.clone()),
+            p.clone(),
+        )(ind)
+    }
+}
+
+fn none_or_many<'a>(p : impl Parser<'a>, comb : impl Combiner<'a>) -> impl Parser<'a>
+{
+    one_or_none(one_or_many(p, comb))
+}
+
+fn none_or_many_until<'a>(pa : impl Parser<'a>, pb : impl Parser<'a>, comb : impl Combiner<'a>) -> impl Parser<'a>
+{
+    move |ind : &InDat<'a>| -> Out<'a> {
+        or(
+            pb.clone(),
+            then(
+                pa.clone(),
+                none_or_many_until(pa.clone(), pb.clone(), comb.clone()),
+                comb.clone(),
+            ),
+        )(ind)
+    }
+}
+
+fn one_or_many_until<'a>(pa : impl Parser<'a>, pb : impl Parser<'a>, comb : impl Combiner<'a>) -> impl Parser<'a>
+{
+    then(
+        pa.clone(),
+        or(pb.clone(), none_or_many_until(pa.clone(), pb.clone(), comb.clone())),
+        comb.clone(),
+    )
+}
+
+fn read_char_f<'a>(predicate : impl Fn(char) -> bool + Clone) -> impl Parser<'a>
+{
+    move |ind : &InDat<'a>| -> Out<'a> {
+        match ind.text.chars().nth(0)
+        {
+            Some(c) =>
+            {
+                if predicate(c)
+                {
+                    Ok(OutDat {
+                        val :       Dat::String {
+                            s : String::from(ind.text.get(0..1).unwrap()),
+                        },
+                        pos :       FilePos {
+                            line :   ind.pos.line,
+                            column : ind.pos.column + 1,
+                        },
+                        remainder : ind.text.get(1..).unwrap(),
+                    })
+                }
+                else
+                {
+                    Err(FailDat {})
+                }
+            },
+            None => Err(FailDat {}),
+        }
+    }
+}
+
+fn char_in_str<'a>(chars_list : &'a str) -> impl Parser<'a> { read_char_f(|c| chars_list.chars().any(|f| f == c)) }
+
+fn char_single<'a>(ch : char) -> impl Parser<'a> { read_char_f(move |c| c == ch) }
+
+fn keyword(word : &'a str) -> impl Parser<'a>
+{
+    // TODO: Add an error for an empty keyword
+    move |ind : &InDat<'a>| -> Out<'a> {
+        if ind.text.starts_with(word)
+        {
+            Ok(OutDat {
+                val :       Dat::String {
+                    s : String::from(word)
+                },
+                pos :       FilePos::new(ind.pos.line, ind.pos.column + word.len()),
+                remainder : ind.text.get(word.len()..).unwrap(),
+            })
+        }
+        else
+        {
+            Err(FailDat {})
+        }
+    }
+}
+
+fn any_char<'a>() -> impl Parser<'a> { read_char_f(|_| true) }
+
+fn consume_until(p : impl Parser<'a>, comb : impl Combiner<'a>) -> impl Parser<'a>
+{
+    move |ind : &InDat<'a>| -> Out<'a> { none_or_many_until(any_char(), p.clone(), comb.clone())(ind) }
+}
+
+// Now a lot more specific
+//--- COMMON PARSERS ---//
+
+fn escaped_char<'a>() -> impl Parser<'a> { then(char_single('\\'), any_char(), lr_comb) }
+
+fn normal_string<'a>() -> impl Parser<'a>
+{
+    // TODO: Make this use lt_comb
+    then(
+        char_single('"'),
+        none_or_many_until(any_char(), char_single('"'), lr_comb),
+        lr_comb,
+    )
 }
 
 fn main() {}
