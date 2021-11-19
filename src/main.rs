@@ -460,8 +460,8 @@ fn thenr<'a>(a : impl Parser<'a>, b : impl Parser<'a>, comb : impl Combiner<'a>)
                         pos :  ind.pos,
                     };
 
-                    let a_res = consume_all(a.clone())(ind);
-                    let b_res = a_res.as_ref().and_then(|a_succ| Ok(b(&a_succ.to_in())));
+                    let a_res = consume_all(a.clone())(&a_dat);
+                    let b_res = a_res.as_ref().and_then(|_| Ok(b(&b_dat)));
                     match (a_res.as_ref(), b_res)
                     {
                         (Ok(ar), Ok(br)) => return comb(Ok(ar.to_owned()), br),
