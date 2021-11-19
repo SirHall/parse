@@ -1,5 +1,4 @@
 #![feature(in_band_lifetimes, trait_alias, type_alias_impl_trait)]
-use std::slice::ArrayWindows;
 
 use rayon::prelude::*;
 
@@ -19,6 +18,11 @@ enum Dat
     V
     {
         v : Box<Dat>,
+    },
+    Tree
+    {
+        p : Box<Dat>, // Parent
+        c : Box<Dat>, // Child
     },
 }
 
@@ -66,13 +70,16 @@ type Out<'a> = Result<OutDat<'a>, FailDat>;
 trait Parser<'a> = Fn(&InDat<'a>) -> Out<'a> + Clone;
 
 trait Combiner<'a> = Fn(Out<'a>, Out<'a>) -> Out<'a> + Clone;
-trait CombinerOk<'a> = Fn(OutDat<'a>, OutDat<'a>) -> Out<'a> + Clone;
+trait CombinerOk<'a> = Fn(Dat, Dat) -> Dat + Clone;
 
 fn gen_comb<'a>(a : Out<'a>, b : Out<'a>, comb : impl CombinerOk<'a>) -> Out<'a>
 {
     match (a, b)
     {
-        (Ok(a), Ok(b)) => comb(a, b),
+        (Ok(a), Ok(b)) => Ok(OutDat {
+            val : comb(a.val, b.val),
+            ..b
+        }),
         (Err(a), Ok(_)) => Err(a),
         (Ok(_), Err(b)) => Err(b),
         (_, _) => Err(FailDat {}),
@@ -81,44 +88,41 @@ fn gen_comb<'a>(a : Out<'a>, b : Out<'a>, comb : impl CombinerOk<'a>) -> Out<'a>
 
 fn lr_comb<'a>(a : Out<'a>, b : Out<'a>) -> Out<'a>
 {
-    gen_comb(a, b, |c1 : OutDat<'a>, c2 : OutDat<'a>| {
-        Ok(OutDat {
-            val : Dat::LR {
-                l : c1.val.into(),
-                r : c2.val.into(),
-            },
-            ..c2
-        })
+    gen_comb(a, b, |c1 : Dat, c2 : Dat| Dat::LR {
+        l : c1.into(),
+        r : c2.into(),
     })
 }
 
 fn l_comb<'a>(a : Out<'a>, b : Out<'a>) -> Out<'a>
 {
-    gen_comb(a, b, |c1 : OutDat<'a>, c2 : OutDat<'a>| {
-        Ok(OutDat {
-            val : Dat::V {
-                v : c1.val.into()
-            },
-            ..c2
-        })
+    gen_comb(a, b, |c1 : Dat, _| Dat::V {
+        v : c1.into()
     })
 }
 
 fn r_comb<'a>(a : Out<'a>, b : Out<'a>) -> Out<'a>
 {
-    gen_comb(a, b, |c1 : OutDat<'a>, c2 : OutDat<'a>| {
-        Ok(OutDat {
-            val : Dat::V {
-                v : c2.val.into()
-            },
-            ..c2
-        })
+    gen_comb(a, b, |_, c2 : Dat| Dat::V {
+        v : c2.into()
     })
 }
 
-// TODO: Implement lt_comb and rt_comb
-// l_comb and r_comb select one branch and discard the other.
-// lt_comb and rt_comb select a branch and place the other as the child
+fn lt_comb<'a>(a : Out<'a>, b : Out<'a>) -> Out<'a>
+{
+    gen_comb(a, b, |c1 : Dat, c2 : Dat| Dat::Tree {
+        p : c1.into(),
+        c : c2.into(),
+    })
+}
+
+fn rt_comb<'a>(a : Out<'a>, b : Out<'a>) -> Out<'a>
+{
+    gen_comb(a, b, |c1 : Dat, c2 : Dat| Dat::Tree {
+        p : c2.into(),
+        c : c1.into(),
+    })
+}
 
 impl OutDat<'a>
 {
@@ -435,6 +439,45 @@ fn consume_until(p : impl Parser<'a>, comb : impl Combiner<'a>) -> impl Parser<'
     move |ind : &InDat<'a>| -> Out<'a> { none_or_many_until(any_char(), p.clone(), comb.clone())(ind) }
 }
 
+fn thenr<'a>(a : impl Parser<'a>, b : impl Parser<'a>, comb : impl Combiner<'a>) -> impl Parser<'a>
+{
+    move |ind : &InDat<'a>| -> Out<'a> {
+        for i in 0..ind.text.len()
+        {
+            let sap = ind.text.get(..i);
+            let sbp = ind.text.get(i..);
+
+            match (sap, sbp)
+            {
+                (Some(sa), Some(sb)) =>
+                {
+                    let a_dat = InDat {
+                        text : sa,
+                        pos :  ind.pos,
+                    };
+                    let b_dat = InDat {
+                        text : sb,
+                        pos :  ind.pos,
+                    };
+
+                    let a_res = consume_all(a.clone())(ind);
+                    let b_res = a_res.as_ref().and_then(|a_succ| Ok(b(&a_succ.to_in())));
+                    match (a_res.as_ref(), b_res)
+                    {
+                        (Ok(ar), Ok(br)) => return comb(Ok(ar.to_owned()), br),
+                        (_, _) =>
+                        {},
+                    }
+                },
+                (_, _) =>
+                {},
+            }
+        }
+
+        return Err(FailDat {});
+    }
+}
+
 // Now a lot more specific
 //--- COMMON PARSERS ---//
 
@@ -442,12 +485,23 @@ fn escaped_char<'a>() -> impl Parser<'a> { then(char_single('\\'), any_char(), l
 
 fn normal_string<'a>() -> impl Parser<'a>
 {
-    // TODO: Make this use lt_comb
     then(
         char_single('"'),
-        none_or_many_until(any_char(), char_single('"'), lr_comb),
-        lr_comb,
+        none_or_many_until(any_char(), char_single('"'), lt_comb),
+        lt_comb,
     )
 }
+
+fn digit<'a>() -> impl Parser<'a> { char_in_str("0123456789") }
+
+fn newline<'a>() -> impl Parser<'a> { or(keyword("\r\n"), keyword("\n")) }
+
+fn air<'a>() -> impl Parser<'a> { char_in_str(" \t\r") }
+
+fn comma<'a>() -> impl Parser<'a> { char_single(',') }
+
+fn dot<'a>() -> impl Parser<'a> { char_single('.') }
+
+fn in_air<'a>(p : impl Parser<'a>) -> impl Parser<'a> { then(air(), then(p, air(), l_comb), r_comb) }
 
 fn main() {}
