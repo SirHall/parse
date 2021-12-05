@@ -2,7 +2,7 @@
 
 use rayon::prelude::*;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 enum Dat
 {
     None,
@@ -17,6 +17,7 @@ enum Dat
     },
     V
     {
+        // Don't quite know why you'd use this one
         v : Box<Dat>,
     },
     Tree
@@ -24,10 +25,16 @@ enum Dat
         p : Box<Dat>, // Parent
         c : Box<Dat>, // Child
     },
+    BTree
+    {
+        p : Box<Dat>, // Parent
+        l : Box<Dat>, // Left Child
+        r : Box<Dat>, // Right Child
+    },
 }
 
 // Text position in the original file
-#[derive(Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 struct FilePos
 {
     line :   usize,
@@ -46,14 +53,27 @@ impl FilePos
 }
 
 // Input text to be parsed
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 struct InDat<'a>
 {
     text : &'a str,
     pos :  FilePos,
 }
 
-#[derive(Clone)]
+impl InDat<'a>
+{
+    pub fn new(to_parse : &'a str) -> InDat<'a>
+    {
+        InDat {
+            text : to_parse,
+            pos :  FilePos {
+                line : 0, column : 0
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 struct OutDat<'a>
 {
     val :       Dat,
@@ -61,7 +81,7 @@ struct OutDat<'a>
     remainder : &'a str,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 struct FailDat {}
 
 type Out<'a> = Result<OutDat<'a>, FailDat>;
@@ -94,19 +114,9 @@ fn lr_comb<'a>(a : Out<'a>, b : Out<'a>) -> Out<'a>
     })
 }
 
-fn l_comb<'a>(a : Out<'a>, b : Out<'a>) -> Out<'a>
-{
-    gen_comb(a, b, |c1 : Dat, _| Dat::V {
-        v : c1.into()
-    })
-}
+fn l_comb<'a>(a : Out<'a>, b : Out<'a>) -> Out<'a> { gen_comb(a, b, |c1 : Dat, _| c1) }
 
-fn r_comb<'a>(a : Out<'a>, b : Out<'a>) -> Out<'a>
-{
-    gen_comb(a, b, |_, c2 : Dat| Dat::V {
-        v : c2.into()
-    })
-}
+fn r_comb<'a>(a : Out<'a>, b : Out<'a>) -> Out<'a> { gen_comb(a, b, |_, c2 : Dat| c2) }
 
 fn lt_comb<'a>(a : Out<'a>, b : Out<'a>) -> Out<'a>
 {
@@ -122,6 +132,17 @@ fn rt_comb<'a>(a : Out<'a>, b : Out<'a>) -> Out<'a>
         p : c2.into(),
         c : c1.into(),
     })
+}
+
+fn bt_comb_gen<'a>(v : Dat) -> impl Combiner<'a>
+{
+    move |a : Out<'a>, b : Out<'a>| -> Out<'a> {
+        gen_comb(a, b, |c1 : Dat, c2 : Dat| Dat::BTree {
+            p : v.clone().into(),
+            l : c1.into(),
+            r : c2.into(),
+        })
+    }
 }
 
 impl OutDat<'a>
@@ -153,8 +174,8 @@ fn then<'a>(a : impl Parser<'a>, b : impl Parser<'a>, comb : impl Combiner<'a>) 
 fn mod_dat<'a>(p : impl Parser<'a>, f : impl Fn(OutDat<'a>) -> OutDat<'a> + Clone) -> impl Parser<'a>
 {
     move |ind : &InDat<'a>| -> Out<'a> {
-        let d = p(ind);
-        match d
+        let p_res = p(ind);
+        match p_res
         {
             Ok(suc) => Ok(f(suc)),
             Err(fail) => Err(fail),
@@ -504,4 +525,41 @@ fn dot<'a>() -> impl Parser<'a> { char_single('.') }
 
 fn in_air<'a>(p : impl Parser<'a>) -> impl Parser<'a> { then(air(), then(p, air(), l_comb), r_comb) }
 
-fn main() {}
+fn infix<'a>(p_left : impl Parser<'a>, p_parent : impl Parser<'a>, p_right : impl Parser<'a>) -> impl Parser<'a>
+{
+    mod_val(
+        then(p_left, then(p_parent, p_right, lt_comb), rt_comb),
+        move |dat : Dat| -> Dat {
+            match dat
+            {
+                Dat::Tree {
+                    p: p1,
+                    c: c1,
+                } => match *p1
+                {
+                    Dat::Tree {
+                        p: p2,
+                        c: c2,
+                    } => Dat::BTree {
+                        p : p2, l : c1, r : c2
+                    },
+                    _ => panic!("This should not be possible, the Dat type should be a single Parent-Child tree"),
+                },
+
+                _ => panic!("This should not be possible, the Dat type should be a single Parent-Child tree"),
+            }
+        },
+    )
+}
+
+fn main()
+{
+    let text = "1 + 2";
+    println!("{}", text);
+
+    let inDat = InDat::new(text);
+
+    let res = infix(digit(), in_air(char_single('+')), digit())(&inDat);
+
+    println!("{:#?}", res);
+}
