@@ -1,13 +1,12 @@
 use std::fmt::Debug;
 
-use super::parser::{POut, PRes};
+use super::parser::{POut, PRes, PResData};
 
-pub trait Combiner<'a, DatA : Debug + Clone, DatB : Debug + Clone, DatOut : Debug + Clone> =
+pub trait Combiner<'a, DatA : PResData, DatB : PResData, DatOut : PResData> =
     Fn(POut<'a, DatA>, POut<'a, DatB>) -> POut<'a, DatOut> + Clone;
-pub trait CombinerOk<'a, DatA : Debug + Clone, DatB : Debug + Clone, DatOut : Debug + Clone> =
-    Fn(DatA, DatB) -> DatOut + Clone;
+pub trait CombinerOk<'a, DatA : PResData, DatB : PResData, DatOut : PResData> = Fn(DatA, DatB) -> DatOut + Clone;
 
-pub fn gen_comb<'a, DatA : Debug + Clone, DatB : Debug + Clone, DatOut : Debug + Clone>(
+pub fn gen_comb<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
     a : POut<'a, DatA>,
     b : POut<'a, DatB>,
     comb : impl CombinerOk<'a, DatA, DatB, DatOut>,
@@ -26,7 +25,7 @@ pub fn gen_comb<'a, DatA : Debug + Clone, DatB : Debug + Clone, DatOut : Debug +
 }
 
 // Simple Combine, generates a combiner that is *simple*
-pub fn smcomb<'a, DatA : Debug + Clone, DatB : Debug + Clone, DatOut : Debug + Clone>(
+pub fn smcomb<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
     comb : impl Fn(DatA, DatB) -> DatOut + Clone,
 ) -> impl Combiner<'a, DatA, DatB, DatOut>
 {

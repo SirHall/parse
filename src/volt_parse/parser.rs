@@ -23,15 +23,17 @@ impl ParserInput<'a>
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct PRes<'a, DatT : Debug + Clone>
+pub trait PResData = Debug + Clone + PartialEq + Eq;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PRes<'a, DatT : PResData>
 {
     pub val :       DatT,
     pub pos :       FilePos,
     pub remainder : &'a str,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PErr
 {
     pub pos : FilePos,
@@ -39,7 +41,7 @@ pub struct PErr
 
 pub type POut<'a, DatT> = Result<PRes<'a, DatT>, PErr>;
 
-pub fn get_p_out_pos<'a, DatT : Debug + Clone>(pout : &POut<'a, DatT>) -> FilePos
+pub fn get_p_out_pos<'a, DatT : PResData>(pout : &POut<'a, DatT>) -> FilePos
 {
     match pout
     {
@@ -48,11 +50,11 @@ pub fn get_p_out_pos<'a, DatT : Debug + Clone>(pout : &POut<'a, DatT>) -> FilePo
     }
 }
 
-pub trait Parser<'a, DatT : Debug + Clone> = Fn(&ParserInput<'a>) -> POut<'a, DatT> + Clone;
+pub trait Parser<'a, DatT : PResData> = Fn(&ParserInput<'a>) -> POut<'a, DatT> + Clone;
 
 pub trait Predicate<'a> = Fn(&'a str) -> bool + Clone;
 
-impl<DatT : Debug + Clone> PRes<'a, DatT>
+impl<DatT : PResData> PRes<'a, DatT>
 {
     pub fn to_in(&self) -> ParserInput<'a>
     {

@@ -5,10 +5,10 @@ use super::{
     combiners::r_comb,
     defs::{Either2, Either3},
     file_pos::FilePos,
-    parser::{PErr, POut, PRes, Parser, ParserInput},
+    parser::{PErr, POut, PRes, PResData, Parser, ParserInput},
 };
 
-pub fn then<'a, DatA : Debug + Clone, DatB : Debug + Clone, DatOut : Debug + Clone>(
+pub fn then<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
     a : impl Parser<'a, DatA>,
     b : impl Parser<'a, DatB>,
     comb : impl Combiner<'a, DatA, DatB, DatOut>,
@@ -27,7 +27,7 @@ pub fn then<'a, DatA : Debug + Clone, DatB : Debug + Clone, DatOut : Debug + Clo
     }
 }
 
-pub fn mod_out<'a, DatIn : Debug + Clone, DatOut : Debug + Clone>(
+pub fn mod_out<'a, DatIn : PResData, DatOut : PResData>(
     p : impl Parser<'a, DatIn>,
     f : impl Fn(PRes<'a, DatIn>) -> POut<'a, DatOut> + Clone,
 ) -> impl Parser<'a, DatOut>
@@ -38,7 +38,7 @@ pub fn mod_out<'a, DatIn : Debug + Clone, DatOut : Debug + Clone>(
     }
 }
 
-pub fn mod_dat<'a, DatIn : Debug + Clone, DatOut : Debug + Clone>(
+pub fn mod_dat<'a, DatIn : PResData, DatOut : PResData>(
     p : impl Parser<'a, DatIn>,
     f : impl Fn(PRes<'a, DatIn>) -> PRes<'a, DatOut> + Clone,
 ) -> impl Parser<'a, DatOut>
@@ -46,7 +46,7 @@ pub fn mod_dat<'a, DatIn : Debug + Clone, DatOut : Debug + Clone>(
     mod_out(p, move |v : PRes<'a, DatIn>| -> POut<'a, DatOut> { Ok(f(v)) })
 }
 
-pub fn mod_val<'a, DatIn : Debug + Clone, DatOut : Debug + Clone>(
+pub fn mod_val<'a, DatIn : PResData, DatOut : PResData>(
     p : impl Parser<'a, DatIn>,
     f : impl Fn(DatIn) -> DatOut + Clone,
 ) -> impl Parser<'a, DatOut>
@@ -60,7 +60,7 @@ pub fn mod_val<'a, DatIn : Debug + Clone, DatOut : Debug + Clone>(
     })
 }
 
-pub fn replace_val<'a, DatIn : Debug + Clone, DatOut : Debug + Clone>(
+pub fn replace_val<'a, DatIn : PResData, DatOut : PResData>(
     p : impl Parser<'a, DatIn>,
     v : impl Fn() -> DatOut + Clone,
 ) -> impl Parser<'a, DatOut>
@@ -74,7 +74,7 @@ pub fn replace_val<'a, DatIn : Debug + Clone, DatOut : Debug + Clone>(
     })
 }
 
-pub fn succeed_if<'a, DatT : Debug + Clone>(
+pub fn succeed_if<'a, DatT : PResData>(
     p : impl Parser<'a, DatT>,
     f : impl Fn(&PRes<'a, DatT>) -> bool + Clone,
 ) -> impl Parser<'a, DatT>
@@ -95,7 +95,7 @@ pub fn succeed_if<'a, DatT : Debug + Clone>(
     }
 }
 
-pub fn fail_if<'a, DatT : Debug + Clone>(
+pub fn fail_if<'a, DatT : PResData>(
     p : impl Parser<'a, DatT>,
     f : impl Fn(&PRes<'a, DatT>) -> bool + Clone,
 ) -> impl Parser<'a, DatT>
@@ -103,7 +103,7 @@ pub fn fail_if<'a, DatT : Debug + Clone>(
     succeed_if(p, move |r| !f(r))
 }
 
-pub fn all<'a, DatT : Debug + Clone>(p : impl Parser<'a, DatT>) -> impl Parser<'a, DatT>
+pub fn all<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parser<'a, DatT>
 {
     succeed_if(p, |r| r.remainder.is_empty())
 }
@@ -111,7 +111,7 @@ pub fn all<'a, DatT : Debug + Clone>(p : impl Parser<'a, DatT>) -> impl Parser<'
 // TODO: Replace/Modify fail message
 
 // TODO: This may not work, the lifetimes probably aren't right
-pub fn always<'a, DatT : Debug + Clone>(default_fn : impl Fn() -> DatT + Clone) -> impl Parser<'a, DatT>
+pub fn always<'a, DatT : PResData>(default_fn : impl Fn() -> DatT + Clone) -> impl Parser<'a, DatT>
 {
     move |ind : &ParserInput<'a>| -> POut<'a, DatT> {
         Ok(PRes {
@@ -122,7 +122,7 @@ pub fn always<'a, DatT : Debug + Clone>(default_fn : impl Fn() -> DatT + Clone) 
     }
 }
 
-pub fn not<'a, DatT : Debug + Clone>(
+pub fn not<'a, DatT : PResData>(
     p : impl Parser<'a, DatT>,
     default_fn : impl Fn() -> DatT + Clone,
 ) -> impl Parser<'a, DatT>
@@ -142,7 +142,7 @@ pub fn not<'a, DatT : Debug + Clone>(
     }
 }
 
-pub fn or<'a, DatT : Debug + Clone>(a : impl Parser<'a, DatT>, b : impl Parser<'a, DatT>) -> impl Parser<'a, DatT>
+pub fn or<'a, DatT : PResData>(a : impl Parser<'a, DatT>, b : impl Parser<'a, DatT>) -> impl Parser<'a, DatT>
 {
     move |ind : &ParserInput<'a>| -> POut<'a, DatT> {
         match a(ind)
@@ -165,7 +165,7 @@ pub fn or<'a, DatT : Debug + Clone>(a : impl Parser<'a, DatT>, b : impl Parser<'
     }
 }
 
-pub fn or_diff<'a, DatA : Debug + Clone, DatB : Debug + Clone>(
+pub fn or_diff<'a, DatA : PResData, DatB : PResData>(
     a : impl Parser<'a, DatA>,
     b : impl Parser<'a, DatB>,
 ) -> impl Parser<'a, Either2<DatA, DatB>>
@@ -191,7 +191,7 @@ pub fn or_diff<'a, DatA : Debug + Clone, DatB : Debug + Clone>(
     }
 }
 
-pub fn either_or<'a, DatA : Debug + Clone, DatB : Debug + Clone, DatOut : Debug + Clone>(
+pub fn either_or<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
     a : impl Parser<'a, DatA>,
     b : impl Parser<'a, DatB>,
     comb : impl Combiner<'a, DatA, DatB, DatOut>,
@@ -237,7 +237,7 @@ pub fn either_or<'a, DatA : Debug + Clone, DatB : Debug + Clone, DatOut : Debug 
 //     }
 // }
 
-pub fn chain_select<'a, DatT : Debug + Clone>(ps : Vec<impl Parser<'a, DatT>>, index : usize) -> impl Parser<'a, DatT>
+pub fn chain_select<'a, DatT : PResData>(ps : Vec<impl Parser<'a, DatT>>, index : usize) -> impl Parser<'a, DatT>
 {
     move |ind : &ParserInput<'a>| -> POut<'a, DatT> {
         if ps.len() == 0
@@ -285,7 +285,7 @@ pub fn chain_select<'a, DatT : Debug + Clone>(ps : Vec<impl Parser<'a, DatT>>, i
     }
 }
 
-pub fn or_chain<'a, DatT : Debug + Clone>(ps : Vec<impl Parser<'a, DatT>>) -> impl Parser<'a, DatT>
+pub fn or_chain<'a, DatT : PResData>(ps : Vec<impl Parser<'a, DatT>>) -> impl Parser<'a, DatT>
 {
     move |ind : &ParserInput<'a>| -> POut<'a, DatT> {
         for i in 0..ps.len()
@@ -303,7 +303,7 @@ pub fn or_chain<'a, DatT : Debug + Clone>(ps : Vec<impl Parser<'a, DatT>>) -> im
     }
 }
 
-pub fn one_or_none<'a, DatT : Debug + Clone>(p : impl Parser<'a, DatT>) -> impl Parser<'a, Option<DatT>>
+pub fn one_or_none<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parser<'a, Option<DatT>>
 {
     mod_val(or_diff(p, always(|| ())), |v : Either2<DatT, ()>| -> Option<DatT> {
         match v
@@ -314,7 +314,7 @@ pub fn one_or_none<'a, DatT : Debug + Clone>(p : impl Parser<'a, DatT>) -> impl 
     })
 }
 
-pub fn none_or_many<'a, DatT : Debug + Clone>(p : impl Parser<'a, DatT>) -> impl Parser<'a, Vec<DatT>>
+pub fn none_or_many<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parser<'a, Vec<DatT>>
 {
     // Done this way to prevent stack overflows
 
@@ -352,12 +352,12 @@ pub fn none_or_many<'a, DatT : Debug + Clone>(p : impl Parser<'a, DatT>) -> impl
     }
 }
 
-pub fn one_or_many<'a, DatT : Debug + Clone>(p : impl Parser<'a, DatT>) -> impl Parser<'a, Vec<DatT>>
+pub fn one_or_many<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parser<'a, Vec<DatT>>
 {
     succeed_if(none_or_many(p), move |v : &PRes<'a, Vec<DatT>>| v.val.len() == 0)
 }
 
-pub fn none_or_many_until<'a, DatA : Debug + Clone, DatB : Debug + Clone, DatOut : Debug + Clone>(
+pub fn none_or_many_until<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
     pa : impl Parser<'a, DatA>,
     pb : impl Parser<'a, DatB>,
     comb : impl Combiner<'a, Vec<DatA>, DatB, DatOut>,
@@ -366,7 +366,7 @@ pub fn none_or_many_until<'a, DatA : Debug + Clone, DatB : Debug + Clone, DatOut
     then(none_or_many(pa), pb, comb)
 }
 
-pub fn one_or_many_until<'a, DatA : Debug + Clone, DatB : Debug + Clone, DatOut : Debug + Clone>(
+pub fn one_or_many_until<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
     pa : impl Parser<'a, DatA>,
     pb : impl Parser<'a, DatB>,
     comb : impl Combiner<'a, Vec<DatA>, DatB, DatOut>,
@@ -437,7 +437,7 @@ pub fn keyword(word : &'a str) -> impl Parser<'a, String>
 
 pub fn any_char<'a>() -> impl Parser<'a, String> { read_char_f(|_| true) }
 
-pub fn consume_until<'a, DatEnd : Debug + Clone, DatOut : Debug + Clone>(
+pub fn consume_until<'a, DatEnd : PResData, DatOut : PResData>(
     p : impl Parser<'a, DatEnd>,
     comb : impl Combiner<'a, String, DatEnd, DatOut> + Clone,
 ) -> impl Parser<'a, DatOut>
@@ -458,7 +458,7 @@ pub fn consume_until<'a, DatEnd : Debug + Clone, DatOut : Debug + Clone>(
     )
 }
 
-pub fn thenr<'a, DatA : Debug + Clone, DatB : Debug + Clone, DatOut : Debug + Clone>(
+pub fn thenr<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
     a : impl Parser<'a, DatA>,
     b : impl Parser<'a, DatB>,
     comb : impl Combiner<'a, DatA, DatB, DatOut>,

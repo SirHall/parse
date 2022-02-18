@@ -1,11 +1,11 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Either2<LeftT, RightT>
 {
     Left(LeftT),
     Right(RightT),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Either3<TA, TB, TC>
 {
     A(TA),
