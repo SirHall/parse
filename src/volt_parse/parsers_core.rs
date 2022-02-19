@@ -399,6 +399,8 @@ pub fn keyword(word : &'a str) -> impl Parser<'a, String>
     move |ind : &ParserInput<'a>| -> POut<'a, String> {
         if ind.text.starts_with(word)
         {
+            // TODO: This should not be handled here, as the keyword could contain either
+            // CR/LF
             Ok(PRes {
                 val :       String::from(word),
                 pos :       FilePos::new(ind.pos.line, ind.pos.column + word.len()),
