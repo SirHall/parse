@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use super::{
-    combiner::Combiner,
+    combiner::{smcomb, Combiner},
     combiners::r_comb,
     defs::{Either2, Either3},
     file_pos::FilePos,
@@ -316,45 +316,24 @@ pub fn one_or_none<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parse
 
 pub fn none_or_many<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parser<'a, Vec<DatT>>
 {
-    // Done this way to prevent stack overflows
-
     move |ind : &ParserInput<'a>| -> POut<'a, Vec<DatT>> {
-        let mut ls = vec![];
-
-        let mut ind_looped = ind.clone();
-
-        loop
-        {
-            match one_or_none(p.clone())(ind)
-            {
-                Ok(p_result) => match &p_result.val
-                {
-                    Some(parsed_element) =>
-                    {
-                        ls.push(parsed_element.clone());
-                        ind_looped = p_result.to_in();
-                    },
-                    None =>
-                    {
-                        return Ok(PRes {
-                            val :       ls,
-                            pos :       p_result.pos,
-                            remainder : p_result.remainder,
-                        });
-                    },
-                },
-                Err(p_err) =>
-                {
-                    return Err(p_err);
-                },
-            }
-        }
+        mod_val(
+            one_or_none(then(
+                p.clone(),
+                none_or_many(p.clone()),
+                smcomb(|a : DatT, mut b : Vec<DatT>| {
+                    b.insert(0, a);
+                    b
+                }),
+            )),
+            |opt_list| opt_list.unwrap_or_else(|| vec![]),
+        )(ind)
     }
 }
 
 pub fn one_or_many<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parser<'a, Vec<DatT>>
 {
-    succeed_if(none_or_many(p), move |v : &PRes<'a, Vec<DatT>>| v.val.len() == 0)
+    succeed_if(none_or_many(p), move |v : &PRes<'a, Vec<DatT>>| v.val.len() > 0)
 }
 
 pub fn none_or_many_until<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
@@ -507,5 +486,20 @@ pub fn thenr<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
         return Err(PErr {
             pos : ind.pos
         });
+    }
+}
+
+pub fn no_consume<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parser<'a, DatT>
+{
+    move |ind : &ParserInput<'a>| -> POut<'a, DatT> {
+        let always_res = always(|| ())(ind)?;
+
+        p(ind).map(|p_res| -> PRes<'a, DatT> {
+            PRes {
+                val :       p_res.val,
+                pos :       always_res.pos,
+                remainder : always_res.remainder,
+            }
+        })
     }
 }
