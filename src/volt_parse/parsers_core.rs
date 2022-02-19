@@ -74,6 +74,17 @@ pub fn replace_val<'a, DatIn : PResData, DatOut : PResData>(
     })
 }
 
+// pub trait ParserGen<'a, DatT> = FnOnce() -> impl Parser<'a, DatT>;
+
+pub fn defer<'a, DatT, G, R>(p_fn : G) -> impl Parser<'a, DatT>
+where
+    DatT : PResData,
+    G : Fn() -> R + Clone,
+    R : Parser<'a, DatT>,
+{
+    move |ind : &ParserInput<'a>| -> POut<'a, DatT> { p_fn()(ind) }
+}
+
 pub fn succeed_if<'a, DatT : PResData>(
     p : impl Parser<'a, DatT>,
     f : impl Fn(&PRes<'a, DatT>) -> bool + Clone,

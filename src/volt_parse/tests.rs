@@ -64,3 +64,22 @@ fn no_consume_test()
         },)
     );
 }
+
+#[test]
+fn defer_test()
+{
+    let res = defer(|| then(defer(|| keyword("abc")), defer(|| keyword("123")), lr_comb))(&ParserInput::new("abc123"));
+
+    println!("{:#?}", res);
+
+    assert_eq!(
+        res,
+        Ok(PRes {
+            val :       (String::from("abc"), String::from("123"),),
+            pos :       FilePos {
+                line : 1, column : 6
+            },
+            remainder : "",
+        },)
+    );
+}
