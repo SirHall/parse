@@ -285,6 +285,8 @@ pub fn chain_select<'a, DatT : PResData>(ps : Vec<impl Parser<'a, DatT>>, index 
     }
 }
 
+// TODO: Fix this, each lambda is a different type, this must accept a vector of
+// 'dyn Parser's
 pub fn or_chain<'a, DatT : PResData>(ps : Vec<impl Parser<'a, DatT>>) -> impl Parser<'a, DatT>
 {
     move |ind : &ParserInput<'a>| -> POut<'a, DatT> {
