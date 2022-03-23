@@ -22,8 +22,10 @@ impl<'a> ParserInput<'a>
     }
 }
 
+// Parser result data
 pub trait PResData = Debug + Clone + PartialEq + Eq;
 
+// Parser result (success)
 #[derive(Debug, Clone, PartialEq)]
 pub struct PRes<'a, DatT : PResData>
 {
@@ -32,12 +34,14 @@ pub struct PRes<'a, DatT : PResData>
     pub remainder : &'a str,
 }
 
+// Parser error
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PErr
 {
     pub pos : FilePos,
 }
 
+// Paser out type
 pub type POut<'a, DatT> = Result<PRes<'a, DatT>, PErr>;
 
 pub fn get_p_out_pos<'a, DatT : PResData>(pout : &POut<'a, DatT>) -> FilePos

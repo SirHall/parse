@@ -31,8 +31,10 @@ pub fn comma<'a>() -> impl Parser<'a, String> { char_single(',') }
 
 pub fn dot<'a>() -> impl Parser<'a, String> { char_single('.') }
 
-// fn in_air<'a, DatT :Debug+Clone >(p : impl Parser<'a, DatT>) -> impl
-// Parser<'a,DatT> { then(air(), then(p, air(), l_comb), r_comb) }
+// fn in_air<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parser<'a,
+// DatT> {
+//     then(air(), then(p, air(), l_comb), r_comb)
+// }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Infix<LeftT, ParentT, RightT>
