@@ -3,8 +3,11 @@ name = "volt_parse"
 version = "0.2.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "The advanced, lightning-fast parsing library"
+keywords = ["volt_parse", "volt", "parse", "parsing", "text", "manipulation"]
+homepage = "https://github.com/SirHall/volt_parse"
+repository = "https://github.com/SirHall/volt_parse"
+documentation = "https://github.com/SirHall/volt_parse"
+readme = "README.md"
 
 [dependencies]
-rayon = "1.5.1"
