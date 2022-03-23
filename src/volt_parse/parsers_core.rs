@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 use super::{
     combiner::{smcomb, Combiner},
     combiners::r_comb,
@@ -141,10 +139,10 @@ pub fn not<'a, DatT : PResData>(
     move |ind : &ParserInput<'a>| -> POut<'a, DatT> {
         match p(ind)
         {
-            Ok(v) => Err(PErr {
+            Ok(_v) => Err(PErr {
                 pos : ind.pos
             }),
-            Err(v) => Ok(PRes {
+            Err(_v) => Ok(PRes {
                 val :       default_fn(),
                 pos :       ind.pos,
                 remainder : ind.text,
@@ -163,7 +161,7 @@ pub fn or<'a, DatT : PResData>(a : impl Parser<'a, DatT>, b : impl Parser<'a, Da
                 pos :       a.pos,
                 remainder : a.remainder,
             }),
-            Err(a) => match b(ind)
+            Err(_a) => match b(ind)
             {
                 Ok(b) => Ok(PRes {
                     val :       b.val,
@@ -189,7 +187,7 @@ pub fn or_diff<'a, DatA : PResData, DatB : PResData>(
                 pos :       a.pos,
                 remainder : a.remainder,
             }),
-            Err(a) => match b(ind)
+            Err(_a) => match b(ind)
             {
                 Ok(b) => Ok(PRes {
                     val :       Either2::Right(b.val),
@@ -406,7 +404,7 @@ pub fn char_in_str<'a>(chars_list : &'a str) -> impl Parser<'a, String>
 
 pub fn char_single<'a>(ch : char) -> impl Parser<'a, String> { read_char_f(move |c| c == ch) }
 
-pub fn keyword(word : &'a str) -> impl Parser<'a, String>
+pub fn keyword<'a>(word : &'a str) -> impl Parser<'a, String>
 {
     // TODO: Add an error for an empty keyword
     move |ind : &ParserInput<'a>| -> POut<'a, String> {
@@ -466,7 +464,7 @@ pub fn thenr<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
 
             match (sap, sbp)
             {
-                (Some(sa), Some(sb)) =>
+                (Some(sa), Some(_sb)) =>
                 {
                     match all(a.clone())(&ParserInput {
                         text : sa,
@@ -485,11 +483,11 @@ pub fn thenr<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
                                 {
                                     return comb(Ok(a_succ), Ok(b_succ));
                                 },
-                                Err(b_err) =>
+                                Err(_b_err) =>
                                 {},
                             }
                         },
-                        Err(a_err) =>
+                        Err(_a_err) =>
                         {},
                     }
                 },

@@ -2,7 +2,6 @@ use super::{
     combiner::gen_comb,
     parser::{POut, PResData},
 };
-use std::fmt::Debug;
 
 pub fn l_comb<'a, DatA : PResData, DatB : PResData>(a : POut<'a, DatA>, b : POut<'a, DatB>) -> POut<'a, DatA>
 {

@@ -1,6 +1,5 @@
-use std::fmt::Debug;
-
 use super::file_pos::FilePos;
+use std::fmt::Debug;
 
 // Input text to be parsed
 #[derive(Debug, Clone, Copy)]
@@ -10,7 +9,7 @@ pub struct ParserInput<'a>
     pub pos :  FilePos,
 }
 
-impl ParserInput<'a>
+impl<'a> ParserInput<'a>
 {
     pub fn new(to_parse : &'a str) -> ParserInput<'a>
     {
@@ -54,7 +53,7 @@ pub trait Parser<'a, DatT : PResData> = Fn(&ParserInput<'a>) -> POut<'a, DatT> +
 
 pub trait Predicate<'a> = Fn(&'a str) -> bool + Clone;
 
-impl<DatT : PResData> PRes<'a, DatT>
+impl<'a, DatT : PResData> PRes<'a, DatT>
 {
     pub fn to_in(&self) -> ParserInput<'a>
     {

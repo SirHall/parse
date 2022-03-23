@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 use super::parser::{POut, PRes, PResData};
 
 pub trait Combiner<'a, DatA : PResData, DatB : PResData, DatOut : PResData> =
@@ -19,7 +17,7 @@ pub fn gen_comb<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
             pos :       pb.pos,
             remainder : pb.remainder,
         }),
-        (Ok(pa), Err(pb)) => Err(pb),
+        (Ok(_pa), Err(pb)) => Err(pb),
         (Err(pa), _) => Err(pa),
     }
 }
