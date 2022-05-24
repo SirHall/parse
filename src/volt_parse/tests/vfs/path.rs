@@ -1,7 +1,3 @@
-use super::parser::path_parser;
-use crate::prelude::*;
-use anyhow::bail;
-use anyhow::Result;
 use itertools::Itertools;
 use std::fmt::Display;
 
@@ -46,63 +42,6 @@ impl From<SafePath> for UnsafePath
         UnsafePath {
             pieces :    sp.pieces.iter().map(|name| PathPiece::Name(name.to_owned())).collect(),
             path_type : UnsafePathType::Relative,
-        }
-    }
-}
-
-impl UnsafePath
-{
-    pub fn break_path(path : &str) -> Result<UnsafePath>
-    {
-        match path_parser()(&ParserInput::new(path))
-        {
-            Ok(pres) => Ok(pres.val),
-            Err(perr) => bail!("{:#?}", perr),
-        }
-    }
-
-    pub fn cannonize(base : &SafePath, tail : UnsafePath) -> Result<SafePath>
-    {
-        let mut new_path = base.clone();
-
-        for piece in tail.pieces.as_slice()
-        {
-            match piece
-            {
-                PathPiece::Name(name) => new_path.pieces.push(name.clone()),
-                PathPiece::Up =>
-                {
-                    if new_path.pieces.is_empty()
-                    {
-                        //// We don't bail here as apparently standard Unix behaviour is simply to clamp to root
-                        // Actually we do, as this can hide some pretty nasty bugs in the user's own code
-                        bail!(format!(
-                            "Combining base path {:?} with {} attempts to move outside of the root directory",
-                            base, tail
-                        ));
-                    }
-                    else
-                    {
-                        new_path.pieces.pop();
-                    }
-                },
-                // These should never happen, but may if the user has been very sneaky
-                PathPiece::Current => bail!("'.' should not exist in an unsafe path"),
-                PathPiece::Delim => bail!("'/' should not exist in an unsafe path"),
-                PathPiece::Home => todo!("'~' should not exist in an unsafe path"),
-            }
-        }
-
-        Ok(new_path)
-    }
-
-    pub fn cannonize_environment(home : &SafePath, working_dir : &SafePath, tail : UnsafePath) -> Result<SafePath>
-    {
-        match tail.path_type
-        {
-            UnsafePathType::Relative => Self::cannonize(working_dir, tail),
-            UnsafePathType::Absolute => Self::cannonize(&SafePath::root(), tail),
-            UnsafePathType::Home => Self::cannonize(home, tail),
         }
     }
 }

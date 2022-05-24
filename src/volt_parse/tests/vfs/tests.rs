@@ -1,11 +1,8 @@
-use super::path::SafePath;
 use crate::prelude::*;
 use crate::volt_parse::tests::vfs::parser::path_parser;
 use crate::volt_parse::tests::vfs::path::PathPiece;
 use crate::volt_parse::tests::vfs::path::UnsafePath;
 use crate::volt_parse::tests::vfs::path::UnsafePathType;
-use anyhow::anyhow;
-use anyhow::Result;
 
 #[test]
 fn test_path_parse_relative()
@@ -193,20 +190,4 @@ fn test_path_forbid_name_with_double_dots_2()
             },
         })
     );
-}
-
-#[test]
-fn test_path_cannonization() -> Result<()>
-{
-    let home = path_parser()(&ParserInput::new("/home/username/"))
-        .map_err(|err| anyhow!("{:?}", err))?
-        .val;
-
-    let home_rooted = UnsafePath::cannonize(&SafePath::root(), home)?;
-
-    let path : UnsafePath = path_parser()(&ParserInput::new("to/the/work.txt"))
-        .map_err(|err| anyhow!("{:?}", err))?
-        .val;
-
-    Ok(())
 }

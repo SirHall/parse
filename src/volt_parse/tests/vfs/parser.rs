@@ -60,16 +60,6 @@ pub fn local_path_parser<'a>() -> impl Parser<'a, Vec<PathPiece>>
     }
 }
 
-// TODO: This should probably be removed
-pub fn append_start<'a>() -> impl Combiner<'a, PathPiece, Vec<PathPiece>, Vec<PathPiece>>
-{
-    smcomb(|a, b : Vec<PathPiece>| {
-        let mut b2 = b.clone();
-        b2.insert(0, a);
-        b2
-    })
-}
-
 // Removes delimeters, home tilda, and current dot (as on this layer it isn't helpful)
 fn filter_meta_path(piece : &&PathPiece) -> bool
 {
