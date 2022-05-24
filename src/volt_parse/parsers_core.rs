@@ -1,10 +1,11 @@
 use super::{
     combiner::{smcomb, Combiner},
-    combiners::take_right,
+    combiners::{take_right, tuple_left_char_vec_to_str},
     defs::{Either2, Either3},
     file_pos::FilePos,
     parser::{PErr, POut, PRes, PResData, Parser, ParserInput},
 };
+use std::fmt::Display;
 
 pub fn then<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
     a : impl Parser<'a, DatA>,
@@ -366,9 +367,9 @@ pub fn one_or_many_until<'a, DatA : PResData, DatB : PResData, DatOut : PResData
     then(one_or_many(pa), pb, comb)
 }
 
-pub fn read_char_f<'a>(predicate : impl Fn(char) -> bool + Clone) -> impl Parser<'a, String>
+pub fn read_char_f<'a>(predicate : impl Fn(char) -> bool + Clone) -> impl Parser<'a, char>
 {
-    move |ind : &ParserInput<'a>| -> POut<'a, String> {
+    move |ind : &ParserInput<'a>| -> POut<'a, char> {
         match ind.text.chars().nth(0)
         {
             Some(c) =>
@@ -376,7 +377,7 @@ pub fn read_char_f<'a>(predicate : impl Fn(char) -> bool + Clone) -> impl Parser
                 if predicate(c)
                 {
                     Ok(PRes {
-                        val :       format!("{}", c),
+                        val :       c,
                         pos :       FilePos {
                             line :   ind.pos.line,
                             column : ind.pos.column + 1,
@@ -398,12 +399,12 @@ pub fn read_char_f<'a>(predicate : impl Fn(char) -> bool + Clone) -> impl Parser
     }
 }
 
-pub fn char_in_str<'a>(chars_list : &'a str) -> impl Parser<'a, String>
+pub fn char_in_str<'a>(chars_list : &'a str) -> impl Parser<'a, char>
 {
     read_char_f(|c| chars_list.chars().any(|f| f == c))
 }
 
-pub fn char_single<'a>(ch : char) -> impl Parser<'a, String> { read_char_f(move |c| c == ch) }
+pub fn char_single<'a>(ch : char) -> impl Parser<'a, char> { read_char_f(move |c| c == ch) }
 
 pub fn keyword<'a>(word : &'a str) -> impl Parser<'a, String>
 {
@@ -428,27 +429,11 @@ pub fn keyword<'a>(word : &'a str) -> impl Parser<'a, String>
     }
 }
 
-pub fn any_char<'a>() -> impl Parser<'a, String> { read_char_f(|_| true) }
+pub fn any_char<'a>() -> impl Parser<'a, char> { read_char_f(|_| true) }
 
-pub fn consume_until<'a, DatEnd : PResData, DatOut : PResData>(
-    p : impl Parser<'a, DatEnd>,
-    comb : impl Combiner<'a, String, DatEnd, DatOut> + Clone,
-) -> impl Parser<'a, DatOut>
+pub fn consume_chars_until<'a, DatEnd : PResData>(p : impl Parser<'a, DatEnd>) -> impl Parser<'a, (String, DatEnd)>
 {
-    none_or_many_until(
-        any_char(),
-        p.clone(),
-        move |a : POut<'a, Vec<String>>, b : POut<'a, DatEnd>| {
-            comb(
-                a.map(|a_succ| PRes {
-                    val :       a_succ.val.join(""),
-                    pos :       a_succ.pos,
-                    remainder : a_succ.remainder,
-                }),
-                b,
-            )
-        },
-    )
+    none_or_many_until(any_char(), p.clone(), tuple_left_char_vec_to_str)
 }
 
 // A right-handed then, try not to use if not necessary
@@ -519,4 +504,9 @@ pub fn no_consume<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parser
             }
         })
     }
+}
+
+pub fn display<'a, DatT : PResData + Display>(p : impl Parser<'a, DatT>) -> impl Parser<'a, String>
+{
+    mod_val(p, |v| format!("{}", v))
 }

@@ -31,7 +31,7 @@ fn multi_element_parsers_test()
     assert_eq!(
         res,
         Ok(PRes {
-            val :       vec![String::from("a"); 5],
+            val :       vec!['a'; 5],
             pos :       FilePos {
                 line : 1, column : 5
             },
@@ -54,10 +54,7 @@ fn no_consume_test()
     assert_eq!(
         res,
         Ok(PRes {
-            val :       (
-                (vec![String::from("="); 7], String::from("@")),
-                (String::from("@"), vec![String::from("-"); 8]),
-            ),
+            val :       ((vec!['='; 7], '@'), ('@', vec!['-'; 8]),),
             pos :       FilePos {
                 line :   1,
                 column : 16,

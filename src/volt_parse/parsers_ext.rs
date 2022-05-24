@@ -9,7 +9,7 @@ pub fn escaped_char<'a>() -> impl Parser<'a, String>
     then(char_single('\\'), any_char(), smcomb(|a, b| format!("{}{}", a, b)))
 }
 
-pub fn normal_string<'a>() -> impl Parser<'a, String>
+pub fn normal_string<'a>() -> impl Parser<'a, char>
 {
     mod_val(
         then(
@@ -21,15 +21,17 @@ pub fn normal_string<'a>() -> impl Parser<'a, String>
     )
 }
 
-pub fn digit<'a>() -> impl Parser<'a, String> { char_in_str("0123456789") }
+pub fn digit<'a>() -> impl Parser<'a, char> { char_in_str("0123456789") }
 
 pub fn newline<'a>() -> impl Parser<'a, String> { or(keyword("\r\n"), keyword("\n")) }
 
-pub fn air<'a, DatT : PResData>() -> impl Parser<'a, String> { or(char_in_str(" \t"), newline()) }
+pub fn air<'a, DatT : PResData>() -> impl Parser<'a, String> { or(display(char_in_str(" \t")), newline()) }
 
-pub fn comma<'a>() -> impl Parser<'a, String> { char_single(',') }
+pub fn comma<'a>() -> impl Parser<'a, char> { char_single(',') }
 
-pub fn dot<'a>() -> impl Parser<'a, String> { char_single('.') }
+pub fn dot<'a>() -> impl Parser<'a, char> { char_single('.') }
+
+// pub fn integer_str<'a>() -> impl Parser<'a, String> { one_or_many(digit(), disp_comb) }
 
 // fn in_air<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parser<'a,
 // DatT> {

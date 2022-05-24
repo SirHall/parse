@@ -16,9 +16,10 @@ pub fn single_dot<'a>() -> impl Parser<'a, String>
 pub fn name_parser<'a>() -> impl Parser<'a, PathPiece>
 {
     mod_val(
-        fail_if(one_or_many(or(char_in_str(PATH_NAME_CHARS), single_dot())), |res| {
-            res.val.len() == 1 && res.val[0] == "."
-        }),
+        fail_if(
+            one_or_many(or(display(char_in_str(PATH_NAME_CHARS)), single_dot())),
+            |res| res.val.len() == 1 && res.val[0] == ".",
+        ),
         |chars| PathPiece::Name(chars.concat()),
     )
 }
