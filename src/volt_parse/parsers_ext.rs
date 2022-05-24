@@ -14,8 +14,8 @@ pub fn normal_string<'a>() -> impl Parser<'a, String>
     mod_val(
         then(
             char_single('"'),
-            none_or_many_until(any_char(), char_single('"'), l_comb),
-            l_comb,
+            none_or_many_until(any_char(), char_single('"'), take_left),
+            take_left,
         ),
         |vs| vs, //.fold(String::from(""), |str,c|str.push(c))
     )
@@ -51,7 +51,7 @@ pub fn infix<'a, DatLeft : PResData, DatParent : PResData, DatRight : PResData>(
 ) -> impl Parser<'a, Infix<DatLeft, DatParent, DatRight>>
 {
     mod_val(
-        then(p_left, then(p_parent, p_right, lr_comb), lr_comb),
+        then(p_left, then(p_parent, p_right, left_right), left_right),
         move |(l, (p, r))| -> Infix<DatLeft, DatParent, DatRight> {
             Infix {
                 l,
@@ -68,7 +68,7 @@ pub fn infixp<'a, DatLeft : PResData, DatParent : PResData, DatRight : PResData>
     p_right : impl Parser<'a, DatRight>,
 ) -> impl Parser<'a, DatParent>
 {
-    then(p_left, then(p_parent, p_right, l_comb), r_comb)
+    then(p_left, then(p_parent, p_right, take_left), take_right)
 }
 
 pub fn maybe<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parser<'a, Option<DatT>> { one_or_none(p) }

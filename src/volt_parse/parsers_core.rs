@@ -1,6 +1,6 @@
 use super::{
     combiner::{smcomb, Combiner},
-    combiners::r_comb,
+    combiners::take_right,
     defs::{Either2, Either3},
     file_pos::FilePos,
     parser::{PErr, POut, PRes, PResData, Parser, ParserInput},
@@ -273,7 +273,7 @@ pub fn chain_select<'a, DatT : PResData>(ps : Vec<impl Parser<'a, DatT>>, index 
                         {
                             selected = Some(c_val.clone());
                         }
-                        current = r_comb(Ok(c_val.clone()), ps[i](&c_val.to_in()));
+                        current = take_right(Ok(c_val.clone()), ps[i](&c_val.to_in()));
                     },
                     Err(c_err) => return Err(c_err),
                 };
@@ -296,7 +296,8 @@ pub fn chain_select<'a, DatT : PResData>(ps : Vec<impl Parser<'a, DatT>>, index 
 
 // TODO: Fix this, each lambda is a different type, this must accept a vector of
 // 'dyn Parser's
-pub fn or_chain<'a, DatT : PResData>(ps : Vec<impl Parser<'a, DatT>>) -> impl Parser<'a, DatT>
+// TODO: We should be able to run these in parallel
+fn or_chain<'a, DatT : PResData>(ps : Vec<impl Parser<'a, DatT>>) -> impl Parser<'a, DatT>
 {
     move |ind : &ParserInput<'a>| -> POut<'a, DatT> {
         for i in 0..ps.len()
@@ -450,6 +451,7 @@ pub fn consume_until<'a, DatEnd : PResData, DatOut : PResData>(
     )
 }
 
+// A right-handed then, try not to use if not necessary
 pub fn thenr<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
     a : impl Parser<'a, DatA>,
     b : impl Parser<'a, DatB>,
@@ -502,6 +504,8 @@ pub fn thenr<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
     }
 }
 
+// Parses a block of text without incrementing the position, useful for
+// look-ahead operations
 pub fn no_consume<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parser<'a, DatT>
 {
     move |ind : &ParserInput<'a>| -> POut<'a, DatT> {
