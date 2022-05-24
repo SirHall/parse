@@ -1,4 +1,5 @@
 max_width = 120
+comment_width = 120
 hard_tabs = false
 tab_spaces = 4
 newline_style = "Unix"
@@ -38,3 +39,4 @@ struct_lit_single_line = false
 trailing_semicolon = true
 type_punctuation_density = "Wide"
 wrap_comments = true
+group_imports = "One"
