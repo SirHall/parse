@@ -3,7 +3,7 @@ name = "volt_parse"
 version = "0.2.2"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-description = "The advanced, lightning-fast parsing library"
+description = "The advanced, slightly different take on the parser combinator concept"
 keywords = ["volt_parse", "volt", "parse", "parsing", "text"]
 homepage = "https://github.com/SirHall/volt_parse"
 repository = "https://github.com/SirHall/volt_parse"
@@ -11,3 +11,7 @@ documentation = "https://github.com/SirHall/volt_parse"
 readme = "README.md"
 
 [dependencies]
+
+[dev-dependencies]
+anyhow = "1.0.57"
+itertools = "0.10.3"
