@@ -31,10 +31,7 @@ pub fn mod_out<'a, DatIn : PResData, DatOut : PResData>(
     f : impl Fn(PRes<'a, DatIn>) -> POut<'a, DatOut> + Clone,
 ) -> impl Parser<'a, DatOut>
 {
-    move |ind : &ParserInput<'a>| -> POut<'a, DatOut> {
-        p(ind).and_then(&f) // TODO: See if this incurrs a slowdown over a 'more
-                            // basic' implementation
-    }
+    move |ind : &ParserInput<'a>| -> POut<'a, DatOut> { p(ind).and_then(&f) }
 }
 
 pub fn mod_dat<'a, DatIn : PResData, DatOut : PResData>(
@@ -295,8 +292,7 @@ pub fn chain_select<'a, DatT : PResData>(ps : Vec<impl Parser<'a, DatT>>, index 
     }
 }
 
-// TODO: Fix this, each lambda is a different type, this must accept a vector of
-// 'dyn Parser's
+// TODO: Fix this, each lambda is a different type, this must accept a vector of 'dyn Parser's
 // TODO: We should be able to run these in parallel
 fn or_chain<'a, DatT : PResData>(ps : Vec<impl Parser<'a, DatT>>) -> impl Parser<'a, DatT>
 {
