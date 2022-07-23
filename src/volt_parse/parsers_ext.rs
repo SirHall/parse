@@ -21,7 +21,17 @@ pub fn normal_string<'a>() -> impl Parser<'a, char>
     )
 }
 
-pub fn digit<'a>() -> impl Parser<'a, char> { char_in_str("0123456789") }
+pub fn lowercase<'a>() -> impl Parser<'a, char> { read_char_f(|c| c.is_lowercase()) }
+pub fn uppercase<'a>() -> impl Parser<'a, char> { read_char_f(|c| c.is_uppercase()) }
+pub fn alpha<'a>() -> impl Parser<'a, char> { read_char_f(|c| c.is_alphabetic()) }
+pub fn alphanumeric<'a>() -> impl Parser<'a, char> { read_char_f(|c| c.is_alphanumeric()) }
+pub fn digit<'a>() -> impl Parser<'a, char> { read_char_f(|c| c.is_digit(10)) }
+
+pub fn ascii_lowercase<'a>() -> impl Parser<'a, char> { read_char_f(|c| c.is_ascii_lowercase()) }
+pub fn ascii_uppercase<'a>() -> impl Parser<'a, char> { read_char_f(|c| c.is_ascii_uppercase()) }
+pub fn ascii_alpha<'a>() -> impl Parser<'a, char> { read_char_f(|c| c.is_ascii_alphabetic()) }
+pub fn ascii_alphanumeric<'a>() -> impl Parser<'a, char> { read_char_f(|c| c.is_ascii_alphanumeric()) }
+pub fn ascii_digit<'a>() -> impl Parser<'a, char> { read_char_f(|c| c.is_ascii_digit()) }
 
 pub fn newline<'a>() -> impl Parser<'a, String> { or(keyword("\r\n"), keyword("\n")) }
 
