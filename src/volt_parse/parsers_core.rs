@@ -1,12 +1,14 @@
 use super::{
     combiner::{smcomb, Combiner},
     combiners::{take_right, tuple_left_char_vec_to_str},
-    defs::{Either2, Either3},
+    defs::{Or2, Or3},
     file_pos::FilePos,
     parser::{PErr, POut, PRes, PResData, Parser, ParserInput},
+    parsers_core_ors::or2,
 };
 use std::fmt::Display;
 
+#[inline]
 pub fn then<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
     a : impl Parser<'a, DatA>,
     b : impl Parser<'a, DatB>,
@@ -26,6 +28,7 @@ pub fn then<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
     }
 }
 
+#[inline]
 pub fn mod_out<'a, DatIn : PResData, DatOut : PResData>(
     p : impl Parser<'a, DatIn>,
     f : impl Fn(PRes<'a, DatIn>) -> POut<'a, DatOut> + Clone,
@@ -34,6 +37,7 @@ pub fn mod_out<'a, DatIn : PResData, DatOut : PResData>(
     move |ind : &ParserInput<'a>| -> POut<'a, DatOut> { p(ind).and_then(&f) }
 }
 
+#[inline]
 pub fn mod_dat<'a, DatIn : PResData, DatOut : PResData>(
     p : impl Parser<'a, DatIn>,
     f : impl Fn(PRes<'a, DatIn>) -> PRes<'a, DatOut> + Clone,
@@ -42,6 +46,7 @@ pub fn mod_dat<'a, DatIn : PResData, DatOut : PResData>(
     mod_out(p, move |v : PRes<'a, DatIn>| -> POut<'a, DatOut> { Ok(f(v)) })
 }
 
+#[inline]
 pub fn mod_val<'a, DatIn : PResData, DatOut : PResData>(
     p : impl Parser<'a, DatIn>,
     f : impl Fn(DatIn) -> DatOut + Clone,
@@ -56,6 +61,7 @@ pub fn mod_val<'a, DatIn : PResData, DatOut : PResData>(
     })
 }
 
+#[inline]
 pub fn replace_val<'a, DatIn : PResData, DatOut : PResData>(
     p : impl Parser<'a, DatIn>,
     v : impl Fn() -> DatOut + Clone,
@@ -72,6 +78,7 @@ pub fn replace_val<'a, DatIn : PResData, DatOut : PResData>(
 
 // pub trait ParserGen<'a, DatT> = FnOnce() -> impl Parser<'a, DatT>;
 
+#[inline]
 pub fn defer<'a, DatT, G, R>(p_fn : G) -> impl Parser<'a, DatT>
 where
     DatT : PResData,
@@ -81,6 +88,7 @@ where
     move |ind : &ParserInput<'a>| -> POut<'a, DatT> { p_fn()(ind) }
 }
 
+#[inline]
 pub fn succeed_if<'a, DatT : PResData>(
     p : impl Parser<'a, DatT>,
     f : impl Fn(&PRes<'a, DatT>) -> bool + Clone,
@@ -102,6 +110,7 @@ pub fn succeed_if<'a, DatT : PResData>(
     }
 }
 
+#[inline]
 pub fn fail_if<'a, DatT : PResData>(
     p : impl Parser<'a, DatT>,
     f : impl Fn(&PRes<'a, DatT>) -> bool + Clone,
@@ -110,6 +119,7 @@ pub fn fail_if<'a, DatT : PResData>(
     succeed_if(p, move |r| !f(r))
 }
 
+#[inline]
 pub fn all<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parser<'a, DatT>
 {
     succeed_if(p, |r| r.remainder.is_empty())
@@ -118,6 +128,7 @@ pub fn all<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parser<'a, Da
 // TODO: Replace/Modify fail message
 
 // TODO: This may not work, the lifetimes probably aren't right
+#[inline]
 pub fn always<'a, DatT : PResData>(default_fn : impl Fn() -> DatT + Clone) -> impl Parser<'a, DatT>
 {
     move |ind : &ParserInput<'a>| -> POut<'a, DatT> {
@@ -129,6 +140,7 @@ pub fn always<'a, DatT : PResData>(default_fn : impl Fn() -> DatT + Clone) -> im
     }
 }
 
+#[inline]
 pub fn not<'a, DatT : PResData>(
     p : impl Parser<'a, DatT>,
     default_fn : impl Fn() -> DatT + Clone,
@@ -149,6 +161,7 @@ pub fn not<'a, DatT : PResData>(
     }
 }
 
+#[inline]
 pub fn or<'a, DatT : PResData>(a : impl Parser<'a, DatT>, b : impl Parser<'a, DatT>) -> impl Parser<'a, DatT>
 {
     move |ind : &ParserInput<'a>| -> POut<'a, DatT> {
@@ -172,45 +185,20 @@ pub fn or<'a, DatT : PResData>(a : impl Parser<'a, DatT>, b : impl Parser<'a, Da
     }
 }
 
-pub fn or_diff<'a, DatA : PResData, DatB : PResData>(
-    a : impl Parser<'a, DatA>,
-    b : impl Parser<'a, DatB>,
-) -> impl Parser<'a, Either2<DatA, DatB>>
-{
-    move |ind : &ParserInput<'a>| -> POut<'a, Either2<DatA, DatB>> {
-        match a(ind)
-        {
-            Ok(a) => Ok(PRes {
-                val :       Either2::Left(a.val),
-                pos :       a.pos,
-                remainder : a.remainder,
-            }),
-            Err(_a) => match b(ind)
-            {
-                Ok(b) => Ok(PRes {
-                    val :       Either2::Right(b.val),
-                    pos :       b.pos,
-                    remainder : b.remainder,
-                }),
-                Err(b) => Err(b),
-            },
-        }
-    }
-}
-
+#[inline]
 pub fn either_or<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
     a : impl Parser<'a, DatA>,
     b : impl Parser<'a, DatB>,
     comb : impl Combiner<'a, DatA, DatB, DatOut>,
-) -> impl Parser<'a, Either3<DatOut, DatA, DatB>>
+) -> impl Parser<'a, Or3<DatOut, DatA, DatB>>
 {
-    mod_val(or_diff(then(a.clone(), b.clone(), comb), or_diff(a, b)), |v| match v
+    mod_val(or2(then(a.clone(), b.clone(), comb), or2(a, b)), |v| match v
     {
-        Either2::Left(l) => Either3::A(l),
-        Either2::Right(r) => match r
+        Or2::A(l) => Or3::A(l),
+        Or2::B(r) => match r
         {
-            Either2::Left(rl) => Either3::B(rl),
-            Either2::Right(rr) => Either3::C(rr),
+            Or2::A(rl) => Or3::B(rl),
+            Or2::B(rr) => Or3::C(rr),
         },
     })
 }
@@ -244,6 +232,7 @@ pub fn either_or<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
 //     }
 // }
 
+#[inline]
 pub fn chain_select<'a, DatT : PResData>(ps : Vec<impl Parser<'a, DatT>>, index : usize) -> impl Parser<'a, DatT>
 {
     move |ind : &ParserInput<'a>| -> POut<'a, DatT> {
@@ -292,37 +281,19 @@ pub fn chain_select<'a, DatT : PResData>(ps : Vec<impl Parser<'a, DatT>>, index 
     }
 }
 
-// TODO: Fix this, each lambda is a different type, this must accept a vector of 'dyn Parser's
-// TODO: We should be able to run these in parallel
-fn or_chain<'a, DatT : PResData>(ps : Vec<impl Parser<'a, DatT>>) -> impl Parser<'a, DatT>
-{
-    move |ind : &ParserInput<'a>| -> POut<'a, DatT> {
-        for i in 0..ps.len()
-        {
-            let res = ps[i](ind);
-            if res.is_ok()
-            {
-                return res;
-            }
-        }
-
-        return Err(PErr {
-            pos : ind.pos
-        });
-    }
-}
-
+#[inline]
 pub fn one_or_none<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parser<'a, Option<DatT>>
 {
-    mod_val(or_diff(p, always(|| ())), |v : Either2<DatT, ()>| -> Option<DatT> {
+    mod_val(or2(p, always(|| ())), |v : Or2<DatT, ()>| -> Option<DatT> {
         match v
         {
-            Either2::Left(lv) => Some(lv),
-            Either2::Right(_) => None,
+            Or2::A(lv) => Some(lv),
+            Or2::B(_) => None,
         }
     })
 }
 
+#[inline]
 pub fn none_or_many<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parser<'a, Vec<DatT>>
 {
     move |ind : &ParserInput<'a>| -> POut<'a, Vec<DatT>> {
@@ -340,11 +311,13 @@ pub fn none_or_many<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Pars
     }
 }
 
+#[inline]
 pub fn one_or_many<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parser<'a, Vec<DatT>>
 {
     succeed_if(none_or_many(p), move |v : &PRes<'a, Vec<DatT>>| v.val.len() > 0)
 }
 
+#[inline]
 pub fn none_or_many_until<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
     pa : impl Parser<'a, DatA>,
     pb : impl Parser<'a, DatB>,
@@ -354,6 +327,7 @@ pub fn none_or_many_until<'a, DatA : PResData, DatB : PResData, DatOut : PResDat
     then(none_or_many(pa), pb, comb)
 }
 
+#[inline]
 pub fn one_or_many_until<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
     pa : impl Parser<'a, DatA>,
     pb : impl Parser<'a, DatB>,
@@ -363,6 +337,7 @@ pub fn one_or_many_until<'a, DatA : PResData, DatB : PResData, DatOut : PResData
     then(one_or_many(pa), pb, comb)
 }
 
+#[inline]
 pub fn read_char_f<'a>(predicate : impl Fn(char) -> bool + Clone) -> impl Parser<'a, char>
 {
     move |ind : &ParserInput<'a>| -> POut<'a, char> {
@@ -395,13 +370,16 @@ pub fn read_char_f<'a>(predicate : impl Fn(char) -> bool + Clone) -> impl Parser
     }
 }
 
+#[inline]
 pub fn char_in_str<'a>(chars_list : &'a str) -> impl Parser<'a, char>
 {
     read_char_f(|c| chars_list.chars().any(|f| f == c))
 }
 
+#[inline]
 pub fn char_single<'a>(ch : char) -> impl Parser<'a, char> { read_char_f(move |c| c == ch) }
 
+#[inline]
 pub fn keyword<'a>(word : &'a str) -> impl Parser<'a, String>
 {
     // TODO: Add an error for an empty keyword
@@ -425,14 +403,17 @@ pub fn keyword<'a>(word : &'a str) -> impl Parser<'a, String>
     }
 }
 
+#[inline]
 pub fn any_char<'a>() -> impl Parser<'a, char> { read_char_f(|_| true) }
 
+#[inline]
 pub fn consume_chars_until<'a, DatEnd : PResData>(p : impl Parser<'a, DatEnd>) -> impl Parser<'a, (String, DatEnd)>
 {
     none_or_many_until(any_char(), p.clone(), tuple_left_char_vec_to_str)
 }
 
 // A right-handed then, try not to use if not necessary
+#[inline]
 pub fn thenr<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
     a : impl Parser<'a, DatA>,
     b : impl Parser<'a, DatB>,
@@ -487,6 +468,7 @@ pub fn thenr<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
 
 // Parses a block of text without incrementing the position, useful for
 // look-ahead operations
+#[inline]
 pub fn no_consume<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parser<'a, DatT>
 {
     move |ind : &ParserInput<'a>| -> POut<'a, DatT> {
@@ -502,6 +484,7 @@ pub fn no_consume<'a, DatT : PResData>(p : impl Parser<'a, DatT>) -> impl Parser
     }
 }
 
+#[inline]
 pub fn display<'a, DatT : PResData + Display>(p : impl Parser<'a, DatT>) -> impl Parser<'a, String>
 {
     mod_val(p, |v| format!("{}", v))

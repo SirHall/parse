@@ -83,3 +83,21 @@ fn defer_test()
         },)
     );
 }
+
+#[test]
+fn test_or5()
+{
+    let res = or5(keyword("a"), keyword("b"), keyword("c"), keyword("d"), keyword("e"))(&ParserInput::new("c"));
+
+    println!("{:#?}", res);
+    assert_eq!(
+        res,
+        Ok(PRes {
+            val :       Or5::C("c".to_string()),
+            pos :       FilePos {
+                line : 1, column : 1
+            },
+            remainder : "",
+        },)
+    )
+}

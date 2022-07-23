@@ -66,4 +66,13 @@ impl<'a, DatT : PResData> PRes<'a, DatT>
             text : self.remainder,
         }
     }
+
+    pub fn with_val<DatTOut : PResData>(&self, dat_out : DatTOut) -> PRes<'a, DatTOut>
+    {
+        PRes {
+            val :       dat_out,
+            pos :       self.pos,
+            remainder : self.remainder,
+        }
+    }
 }
