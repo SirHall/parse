@@ -162,6 +162,16 @@ pub fn not<'a, DatT : PResData>(
 }
 
 #[inline]
+pub fn and<'a, DatA : PResData, DatB : PResData, DatOut : PResData>(
+    a : impl Parser<'a, DatA>,
+    b : impl Parser<'a, DatB>,
+    comb : impl Combiner<'a, DatA, DatB, DatOut>,
+) -> impl Parser<'a, DatOut>
+{
+    move |ind : &ParserInput<'a>| -> POut<'a, DatOut> { a(ind).and_then(|left| comb(Ok(left), b(ind))) }
+}
+
+#[inline]
 pub fn or<'a, DatT : PResData>(a : impl Parser<'a, DatT>, b : impl Parser<'a, DatT>) -> impl Parser<'a, DatT>
 {
     move |ind : &ParserInput<'a>| -> POut<'a, DatT> {

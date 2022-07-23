@@ -101,3 +101,37 @@ fn test_or5()
         },)
     )
 }
+
+#[test]
+fn test_and()
+{
+    let res1 = and(keyword("a"), keyword("abc"), left_right)(&ParserInput::new("abcdef"));
+
+    println!("Res1:\n{:#?}", res1);
+
+    assert_eq!(
+        res1,
+        Ok(PRes {
+            val :       ("a".to_string(), "abc".to_string()),
+            pos :       FilePos {
+                line : 1, column : 3
+            },
+            remainder : "def",
+        },)
+    );
+
+    let res2 = and(keyword("abc"), keyword("a"), left_right)(&ParserInput::new("abcdef"));
+
+    println!("Res2:\n{:#?}", res2);
+
+    assert_eq!(
+        res2,
+        Ok(PRes {
+            val :       ("abc".to_string(), "a".to_string()),
+            pos :       FilePos {
+                line : 1, column : 1
+            },
+            remainder : "bcdef",
+        },)
+    );
+}
